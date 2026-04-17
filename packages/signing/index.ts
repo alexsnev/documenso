@@ -26,6 +26,10 @@ const getSigner = async () => {
 
   const transport = env('NEXT_PRIVATE_SIGNING_TRANSPORT') || 'local';
 
+  if (transport === 'none') {
+    return null;
+  }
+
   // eslint-disable-next-line require-atomic-updates
   signer = await match(transport)
     .with('local', async () => await createLocalSigner())
@@ -38,7 +42,19 @@ const getSigner = async () => {
 };
 
 export const signPdf = async ({ pdf }: SignOptions) => {
+  const transport = env('NEXT_PRIVATE_SIGNING_TRANSPORT') || 'local';
+
+  if (transport === 'none') {
+    const { bytes } = await pdf.save();
+    return bytes;
+  }
+
   const signer = await getSigner();
+
+  if (!signer) {
+    const { bytes } = await pdf.save();
+    return bytes;
+  }
 
   const tsa = getTimestampAuthority();
 
