@@ -19,7 +19,7 @@ export type SignOptions = {
 
 let signer: Signer | null = null;
 
-const getSigner = async () => {
+const getSigner = async (): Promise<Signer | null> => {
   if (signer) {
     return signer;
   }
@@ -30,7 +30,6 @@ const getSigner = async () => {
     return null;
   }
 
-  // eslint-disable-next-line require-atomic-updates
   signer = await match(transport)
     .with('local', async () => await createLocalSigner())
     .with('gcloud-hsm', async () => await createGoogleCloudSigner())
@@ -45,21 +44,21 @@ export const signPdf = async ({ pdf }: SignOptions) => {
   const transport = env('NEXT_PRIVATE_SIGNING_TRANSPORT') || 'local';
 
   if (transport === 'none') {
-    const { bytes } = await pdf.save();
-    return bytes;
+    const result = await pdf.save();
+    return result.bytes;
   }
 
-  const signer = await getSigner();
+  const activeSigner = await getSigner();
 
-  if (!signer) {
-    const { bytes } = await pdf.save();
-    return bytes;
+  if (!activeSigner) {
+    const result = await pdf.save();
+    return result.bytes;
   }
 
   const tsa = getTimestampAuthority();
 
   const { bytes } = await pdf.sign({
-    signer,
+    signer: activeSigner,
     reason: 'Signed by Documenso',
     location: NEXT_PUBLIC_WEBAPP_URL(),
     contactInfo: NEXT_PUBLIC_SIGNING_CONTACT_INFO(),
