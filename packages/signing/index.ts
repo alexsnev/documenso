@@ -19,12 +19,14 @@ export type SignOptions = {
 
 let signer: Signer | null = null;
 
+const getTransport = (): string => env('NEXT_PRIVATE_SIGNING_TRANSPORT') || 'local';
+
 const getSigner = async (): Promise<Signer | null> => {
   if (signer) {
     return signer;
   }
 
-  const transport = env('NEXT_PRIVATE_SIGNING_TRANSPORT') || 'local';
+  const transport = getTransport();
 
   if (transport === 'none') {
     return null;
@@ -41,18 +43,16 @@ const getSigner = async (): Promise<Signer | null> => {
 };
 
 export const signPdf = async ({ pdf }: SignOptions) => {
-  const transport = env('NEXT_PRIVATE_SIGNING_TRANSPORT') || 'local';
+  const transport = getTransport();
 
   if (transport === 'none') {
-    const result = await pdf.save();
-    return result.bytes;
+    return await pdf.save();
   }
 
   const activeSigner = await getSigner();
 
   if (!activeSigner) {
-    const result = await pdf.save();
-    return result.bytes;
+    return await pdf.save();
   }
 
   const tsa = getTimestampAuthority();
