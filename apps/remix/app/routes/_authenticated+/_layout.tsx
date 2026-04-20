@@ -35,7 +35,10 @@ export async function loader({ request }: Route.LoaderArgs) {
   ]);
 
   if (!session.isAuthenticated) {
-    throw redirect('/signin');
+    const url = new URL(request.url);
+    const returnTo = `${url.pathname}${url.search}`;
+
+    throw redirect(`/signin?returnTo=${encodeURIComponent(returnTo)}`);
   }
 
   return {
