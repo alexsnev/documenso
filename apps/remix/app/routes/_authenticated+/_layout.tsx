@@ -1,6 +1,6 @@
 import { msg } from '@lingui/core/macro';
 import { Trans } from '@lingui/react/macro';
-import { Link, Outlet, redirect } from 'react-router';
+import { Link, Outlet, redirect, useLocation } from 'react-router';
 
 import { getOptionalSession } from '@documenso/auth/server/lib/utils/get-session';
 import { OrganisationProvider } from '@documenso/lib/client-only/providers/organisation';
@@ -45,6 +45,7 @@ export async function loader({ request }: Route.LoaderArgs) {
 
 export default function Layout({ loaderData, params, matches }: Route.ComponentProps) {
   const { banner } = loaderData;
+  const location = useLocation();
 
   const { user, organisations } = useSession();
 
@@ -78,6 +79,10 @@ export default function Layout({ loaderData, params, matches }: Route.ComponentP
       match?.id === 'routes/_authenticated+/t.$teamUrl+/documents.$id.edit' ||
       match?.id === 'routes/_authenticated+/t.$teamUrl+/templates.$id.edit',
   );
+  const isSimplifiedProfileRoute =
+    location.pathname === '/settings/profile' &&
+    new URLSearchParams(location.search).get('simplified')?.toLowerCase() === 'true';
+  const shouldHideAuthenticatedChrome = hideHeader || isSimplifiedProfileRoute;
 
   if (orgNotFound || teamNotFound) {
     return (
@@ -114,13 +119,13 @@ export default function Layout({ loaderData, params, matches }: Route.ComponentP
 
         {!user.emailVerified && <VerifyEmailBanner email={user.email} />}
 
-        {banner && !hideHeader && <AppBanner banner={banner} />}
+        {banner && !shouldHideAuthenticatedChrome && <AppBanner banner={banner} />}
 
-        {!hideHeader && <Header />}
+        {!shouldHideAuthenticatedChrome && <Header />}
 
         <main
           className={cn({
-            'mt-8 pb-8 md:mt-12 md:pb-12': !hideHeader,
+            'mt-8 pb-8 md:mt-12 md:pb-12': !shouldHideAuthenticatedChrome,
           })}
         >
           <Outlet />

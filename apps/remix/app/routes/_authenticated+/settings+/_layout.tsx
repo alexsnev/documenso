@@ -1,6 +1,6 @@
 import { msg } from '@lingui/core/macro';
 import { Trans } from '@lingui/react/macro';
-import { Outlet } from 'react-router';
+import { Outlet, useSearchParams } from 'react-router';
 
 import { SettingsDesktopNav } from '~/components/general/settings-nav-desktop';
 import { SettingsMobileNav } from '~/components/general/settings-nav-mobile';
@@ -11,6 +11,17 @@ export function meta() {
 }
 
 export default function SettingsLayout() {
+  const [searchParams] = useSearchParams();
+  const isSimplifiedProfileRoute = searchParams.get('simplified')?.toLowerCase() === 'true';
+
+  if (isSimplifiedProfileRoute) {
+    return (
+      <div className="mx-auto w-full max-w-2xl px-4 py-8 md:px-8 md:py-12">
+        <Outlet />
+      </div>
+    );
+  }
+
   return (
     <div className="mx-auto w-full max-w-screen-xl px-4 md:px-8">
       <h1 className="text-4xl font-semibold">

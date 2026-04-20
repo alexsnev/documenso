@@ -1,6 +1,8 @@
 import { msg } from '@lingui/core/macro';
 import { useLingui } from '@lingui/react';
+import { Trans } from '@lingui/react/macro';
 import { AnimatePresence } from 'framer-motion';
+import { useSearchParams } from 'react-router';
 
 import { useSession } from '@documenso/lib/client-only/providers/session';
 import { isPersonalLayout } from '@documenso/lib/utils/organisations';
@@ -21,10 +23,30 @@ export function meta() {
 export default function SettingsProfile() {
   const { _ } = useLingui();
   const { organisations, user } = useSession();
+  const [searchParams] = useSearchParams();
 
   const { data: teamEmail } = trpc.team.email.get.useQuery();
 
   const isPersonalLayoutMode = isPersonalLayout(organisations);
+  const isSimplifiedProfileRoute = searchParams.get('simplified')?.toLowerCase() === 'true';
+
+  if (isSimplifiedProfileRoute) {
+    return (
+      <div className="rounded-xl border border-border bg-background p-6 shadow-sm md:p-8">
+        <div className="mb-6">
+          <h1 className="text-2xl font-semibold">
+            <Trans>Update profile</Trans>
+          </h1>
+
+          <p className="mt-2 text-sm text-muted-foreground">
+            <Trans>Update your full name and default signature.</Trans>
+          </p>
+        </div>
+
+        <ProfileForm className="max-w-xl" />
+      </div>
+    );
+  }
 
   return (
     <div>
