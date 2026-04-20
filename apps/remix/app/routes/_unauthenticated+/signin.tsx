@@ -65,6 +65,8 @@ export default function SignIn({ loaderData }: Route.ComponentProps) {
 
   const [searchParams] = useSearchParams();
   const [isEmbeddedRedirect, setIsEmbeddedRedirect] = useState(false);
+  const [isManualBypass, setIsManualBypass] = useState(false);
+  const isOIDCAutoRedirectEnabled = env('NEXT_PUBLIC_OIDC_AUTO_REDIRECT') === 'true';
 
   const errorParam = searchParams.get('error');
   const signupError = errorParam ? SIGNUP_ERROR_MESSAGES[errorParam] : undefined;
@@ -72,10 +74,17 @@ export default function SignIn({ loaderData }: Route.ComponentProps) {
   useEffect(() => {
     const hash = window.location.hash.slice(1);
 
-    const params = new URLSearchParams(hash);
+    const hashParams = new URLSearchParams(hash);
 
-    setIsEmbeddedRedirect(params.get('embedded') === 'true');
+    setIsEmbeddedRedirect(hashParams.get('embedded') === 'true');
+    setIsManualBypass(searchParams.get('manual') === '1' || hashParams.get('manual') === '1');
   }, []);
+
+  const shouldHideSignupForOIDCAutoRedirect =
+    isOIDCAutoRedirectEnabled &&
+    isOIDCSSOEnabled === true &&
+    !isEmbeddedRedirect &&
+    !isManualBypass;
 
   return (
     <div className="w-screen max-w-lg px-4">
@@ -103,7 +112,9 @@ export default function SignIn({ loaderData }: Route.ComponentProps) {
           returnTo={returnTo}
         />
 
-        {!isEmbeddedRedirect && env('NEXT_PUBLIC_DISABLE_SIGNUP') !== 'true' && (
+        {!isEmbeddedRedirect &&
+          !shouldHideSignupForOIDCAutoRedirect &&
+          env('NEXT_PUBLIC_DISABLE_SIGNUP') !== 'true' && (
           <p className="mt-6 text-center text-sm text-muted-foreground">
             <Trans>
               Don't have an account?{' '}
@@ -115,7 +126,7 @@ export default function SignIn({ loaderData }: Route.ComponentProps) {
               </Link>
             </Trans>
           </p>
-        )}
+          )}
       </div>
     </div>
   );

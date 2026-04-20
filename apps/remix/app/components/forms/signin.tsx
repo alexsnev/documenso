@@ -97,12 +97,22 @@ export const SignInForm = ({
   const [isTwoFactorAuthenticationDialogOpen, setIsTwoFactorAuthenticationDialogOpen] =
     useState(false);
   const [isEmbeddedRedirect, setIsEmbeddedRedirect] = useState(false);
+  const [isManualBypass, setIsManualBypass] = useState(false);
+  const [isOidcRedirecting, setIsOidcRedirecting] = useState(false);
+  const [hasOidcRedirectFailed, setHasOidcRedirectFailed] = useState(false);
 
   const [twoFactorAuthenticationMethod, setTwoFactorAuthenticationMethod] = useState<
     'totp' | 'backup'
   >('totp');
 
   const hasSocialAuthEnabled = isGoogleSSOEnabled || isMicrosoftSSOEnabled || isOIDCSSOEnabled;
+  const isOIDCAutoRedirectEnabled = env('NEXT_PUBLIC_OIDC_AUTO_REDIRECT') === 'true';
+  const shouldAutoRedirectToOIDC =
+    isOIDCAutoRedirectEnabled &&
+    isOIDCSSOEnabled === true &&
+    !isEmbeddedRedirect &&
+    !isManualBypass &&
+    !hasOidcRedirectFailed;
 
   const turnstileSiteKey = env('NEXT_PUBLIC_TURNSTILE_SITE_KEY');
   const turnstileRef = useRef<TurnstileInstance>(null);
@@ -309,11 +319,16 @@ export const SignInForm = ({
   };
 
   const onSignInWithOIDCClick = async () => {
+    setIsOidcRedirecting(true);
+
     try {
       await authClient.oidc.signIn({
         redirectPath,
       });
     } catch (err) {
+      setIsOidcRedirecting(false);
+      setHasOidcRedirectFailed(true);
+
       toast({
         title: _(msg`An unknown error occurred`),
         description: _(
@@ -327,16 +342,34 @@ export const SignInForm = ({
   useEffect(() => {
     const hash = window.location.hash.slice(1);
 
-    const params = new URLSearchParams(hash);
+    const hashParams = new URLSearchParams(hash);
+    const searchParams = new URLSearchParams(window.location.search);
 
-    const email = params.get('email');
+    const email = hashParams.get('email');
 
     if (email) {
       form.setValue('email', email);
     }
 
-    setIsEmbeddedRedirect(params.get('embedded') === 'true');
+    setIsEmbeddedRedirect(hashParams.get('embedded') === 'true');
+    setIsManualBypass(searchParams.get('manual') === '1' || hashParams.get('manual') === '1');
   }, [form]);
+
+  useEffect(() => {
+    if (!shouldAutoRedirectToOIDC || isOidcRedirecting) {
+      return;
+    }
+
+    void onSignInWithOIDCClick();
+  }, [isOidcRedirecting, shouldAutoRedirectToOIDC]);
+
+  if (shouldAutoRedirectToOIDC) {
+    return (
+      <div className={cn('flex w-full items-center justify-center py-6 text-sm', className)}>
+        <Trans>Redirecting to SSO...</Trans>
+      </div>
+    );
+  }
 
   return (
     <Form {...form}>
@@ -464,7 +497,7 @@ export const SignInForm = ({
                   size="lg"
                   variant="outline"
                   className="border bg-background text-muted-foreground"
-                  disabled={isSubmitting}
+                  disabled={isSubmitting || isOidcRedirecting}
                   onClick={onSignInWithOIDCClick}
                 >
                   <FaIdCardClip className="mr-2 h-5 w-5" />
